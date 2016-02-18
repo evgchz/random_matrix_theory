@@ -1,0 +1,207 @@
+---
+title: "Random Matrix Theory"
+author: "Evgenii Chzhen"
+date: "16 Jan 2016"
+output:
+  pdf_document:
+    fig_crop: no
+    fig_height: 3.5
+    fig_width: 10
+    toc: yes
+  html_document:
+    theme: cosmo
+    toc: yes
+header-includes:
+- \usepackage{graphicx}
+- \usepackage{bbm}
+- \usepackage{mathtools}
+- \usepackage{amsthm}
+- \usepackage{amssymb}
+- \usepackage{amsmath}
+- \newtheorem{mydef}{Definition}
+- \newtheorem{myrem}{Remark}
+- \newtheorem{thm}{Theorem}
+- \newcommand{\norm}[1]{\left\lVert#1\right\rVert}
+bibliography: bibliography.bib
+---
+
+This paper is based on lectures given by Mr. Jamal Najim at Université Paris-Est Marne-la-Vallée.
+We begin with a short introduction to a problem of our interest.
+
+## Large Covariance Matrices
+
+Let $X_N = (X_{ij})$ be a $N \times n$ matrix with i.i.d elements, such that
+
+$$ \mathbb{E}X_{ij} = 0,\,\,\,\, \mathbb{E}|X_{ij}| = 1,\,\,\,\,  \mathbb{E}|X_{ij}| < \infty. $$
+
+Let $R_N$ be a $N \times N$ deterministic semi-positive hermitian matrix with a uniformly bounded spectral norm, i.e. 
+$$\textbf{R} := \sup_N \norm{R_N}_{sp} < \infty.$$
+
+We denote $\Sigma_n = \frac{1}{\sqrt{n}}R_N^{1/2}X_N$. 
+
+\begin{thm}
+Let $L_N$ be a spectral measure of the matrix $\Sigma_n\Sigma_n^*$ and $g_n$ its Stieltjes transformation. Let $L_N^R$ be a spectral measure of the matrix $R_N$, if
+$$L_N^R \xrightarrow[N,n\rightarrow \infty]{etr} L_{\infty}^R,$$
+therefore \\
+
+(a) the following equation $$t(z) = \int \frac{L^R_{\infty}(du)}{-z(1+uct(z))+(1-c)u},\,\,\, z\in \mathbb{C}^+$$ has a unique solution $z \mapsto t(z)$ which is a Stieltjes transformation of a probability measure. \\
+
+(b) $\forall z \in \mathbb{C}^+$, almost surely $g_n(z) \xrightarrow[N,n\rightarrow \infty]{p.s.} t(z)$
+\end{thm}
+
+## Important example
+The goal of this paper is to study the case when $R_N$ has finite number of eigenvalues.
+Suppose that the spectral measure of $R_N$ has the following from
+$$L_N^R = \frac{1}{N}\sum_{l=1}^K n_l \delta_{\rho_l^R},$$
+
+where $K$ is the number of unique eigenvalues of $R_N$ and $K$ is independent from $N,n$, let
+$$\frac{n_l}{N}\xrightarrow[N,n\rightarrow \infty]{} m_l > 0.$$
+In this case
+$$L_N^R \xrightarrow[N,n\rightarrow \infty]{etr} L_{\infty}^R = \sum_{l=1}^Km_l\delta_{\rho_l^R}$$
+and we obtain the following equation
+\begin{equation}
+\label{eq:1}
+t(z) = \sum_{i=1}^K \frac{m_i}{-z(1+c\rho_it(z))+(1-c)\rho_i}.
+\end{equation}
+
+Proceeding the following algorithm one can obtain the density $f(x)$ associated with $t(z)$
+\begin{itemize}
+\item Numerically solve ~\eqref{eq:1} for $z = x \in \mathbb{R}$
+\item Take the unique solution (if exists) $t(x)$ such that $\Im{t(x)} >0$
+\item Density in point $x$ is given by $f(x) = \frac{1}{\pi}\Im{t(x)}$
+\item If there is no solution with $\Im{t(x)} >0$, assign $f(x) = 0$
+\end{itemize}
+
+## Numerical experiments
+We want to make numerical experiments of this case and study the dependence of density on parameter $c = \frac{N}{n}$. To proceed these numerical experiment we have implemented a function which recieves 3 parameters, namely a vector of "weights" $\textbf{m} = (m_1, ..., m_k)$ such that $\sum\limits_{i=1}^Km_i = 1$, a vector of eigenvalues $\mathbf{\rho} = (\rho_1, ..., \rho_k)$ and $c = \frac{N}{n}$, and gives a plot of density. This parameters give us an explicit information about matrix $R_N$ and a matrix $X_n$ therefore about matrix $\Sigma_N$.
+
+Assume that $R_N$ is such that $K = 4$ and $\rho_1 = 1, \rho_2 = 3, \rho_3 = 5, \rho_4 = 7$, $m_1 = m_2 = m_3 =m_4 = \frac{1}{4}$ 
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
+library("polynom", quietly=TRUE)
+
+
+#Check if the object is Number or empty
+isEmpty <- function(x) {
+    return(length(x)==0)
+}
+
+
+#For given vector of eigenvalues (rho) and vector of weights (m) and point (x) 
+#and the parameter (cn) this function
+#returns a polynimial object of order len(rho) + 1
+#TODO: the function is not working for len(rho) == 1, 2.
+#It can be rosolved by simply adding 2 if conditions
+equationMaker <- function(x, rho, m, cn){
+  k <- length(rho)
+  subPolynomials <- matrix(0, nrow = k, ncol = 2)
+  #form polynomials of all denominators in the sum of the equation
+  for(i in 1:k){
+    ai <- (1 - cn) * rho[i] - x
+    bi <- (-1) * x * cn * rho[i]
+    subPolynomials[i, 1] <- ai
+    subPolynomials[i, 2] <- bi
+  }
+  #multiply t(z) by all denominators in the sum of the equation
+  #it forms a left part of the equation
+  leftPart <- polynomial(c(0, 1))
+  for(i in 1:k){
+    leftPart <- leftPart * polynomial(subPolynomials[i,])
+    }
+  #form the right part of the equation
+  rightPart <- polynomial(c(0))
+  for(i in 1:k){
+    termi <- subPolynomials[-i,]
+    subRightPart <- polynomial(c(1))
+    for(j in 1:(k - 1)){
+      subRightPart <- subRightPart * polynomial(termi[j,])
+    }
+    rightPart <- rightPart + polynomial(c(m[i])) * subRightPart
+    }
+  return(leftPart - rightPart)
+}
+
+
+#For given vector of eigenvalues (rho) and vector of weights (m) and given point (x) 
+#this function evaluates rhoots of polynomial and return the unique solution with Im(t(x)) > 0
+#or 0 if there is no such solution
+densitySolver <- function(x, rho, m, cn){
+  p <- equationMaker(x, rho, m, cn)
+  tz <- solve(p)
+  if(!isEmpty(Im(tz[Im(tz) > 0])/pi)) return(Im(tz[Im(tz) > 0])/pi)
+  else return(0)
+}
+
+
+#plot obtained density
+plotDensity <- function(rho, m, cn){
+  net <- seq(min(rho) - 1, max(rho) + 4.2, by = 0.01)
+  a <- rep(0, length(net))
+  for(i in 1:length(net)){
+     a[i] <- densitySolver(net[i], rho, m, cn)
+  }
+  plot(net, a, type='l', col='red', main='Large Covariance Matrices - Limiting Density', xlab=paste(" c =", toString(cn)), ylab='', cex=1.5)
+  legend('topright', c('Density', 'Population') , lty=1, col=c("red", "blue"), bty='n', cex=1.)
+  for(i in 1:length(rho)){
+    abline(v=rho[i], col='blue')
+  }
+}
+
+cn <- 0.3
+m <- c(1 / 4, 1 / 4, 1 / 4, 1 / 4)
+rho <- c(1, 3, 7, 5)
+par(mfrow = c(1, 3))
+plotDensity(rho, m, 0.01)
+plotDensity(rho, m, 0.1)
+plotDensity(rho, m, 0.6)
+```
+\newpage
+Assume that $R_N$ is such that $K = 3$ and $\rho_1 = 1, \rho_2 = 2, \rho_3 = 7$, $m_1 = m_2 = m_3 = \frac{1}{3}$ 
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
+cn <- 0.3
+m <- c(1 / 3, 1 / 3, 1 / 3)
+rho <- c(1, 2, 7)
+par(mfrow = c(1, 3))
+plotDensity(rho, m, 0.01)
+plotDensity(rho, m, 0.1)
+plotDensity(rho, m, 0.6)
+```
+
+One may notice that with an increase of $c$ the density becomes less separated (harder to make an assumption about eigenvalues), a statistical explanation of this effect is following. The ratio $c = \frac{N}{n}$ is a relation between a dimension of feature space and a number of observations, when the amount of observation is less then the dimension of the feature space (case of big ratio c) we can't gather any relevant information from this matrix (in fact in this case we are not in high dimensional statistics). In contrast, if we are able to obtain "a lot of" observation compared to the dim. of the feature space (ratio c is small) we can gather a lot more information (we are able to localize eigenvalues). 
+
+We would also like to study the effect of "weights", we take fix $c = 0.1, K=3$ and take three types of "weight" vectors,
+\begin{enumerate}
+\item{left plot:} $m_1 << m_2 \approx m_3$
+\item{middle plot:} $m_1 \approx m_2 << m_3$
+\item{right plot:} $m_1 \approx m_2 \approx m_3$
+\end{enumerate}
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
+cn <- 0.3
+m1 <- c(2 / 100, 49 / 100, 49 / 100)
+m2 <- c(2 / 100, 2 / 100, 96 / 100)
+m3 <- c(1 / 3, 1 / 3, 1 / 3)
+rho <- c(1, 2, 7)
+par(mfrow = c(1, 3))
+plotDensity(rho, m1, 0.1)
+plotDensity(rho, m2, 0.1)
+plotDensity(rho, m3, 0.1)
+```
+
+One may notice the following effects
+\begin{enumerate}
+\item{left plot:} density gives a "great" approximation of $\rho_1$ and "normal" for $\rho_2$, $\rho_3$
+\item{middle plot:} density gives a "great" approximation of $\rho_1$, $\rho_2$ and "normal" for $\rho_3$
+\item{right plot:} density gives a "normal" approximation of $\rho_1$, $\rho_2$, $\rho_3$
+\end{enumerate}
+
+Our statistical explanation is following. When one of eigenvalues occurs extremely less times then the others the corresponding eigenspace has a "small" dimension therefore it allows us to have less observations to gather same amount of information. It is also obvious that the absolute value of eigenvalue has an effect on the density.
+
+## Corollary
+
+We proceeded a numerical experiment to study an effect of different parameters in the described model. Our conclusion is that the ratio $c$ has an important and natural statistical influence on the density, moreover we have tried to show and explain the influence of "weights" of eigenvalues. For numerical experiments we used R language and implemented a function which can be used in further study of the phenomenon. Our function is mainly based on **polynom** package which provides an easy and intuitive way of working with polynoms.
+
+
+
